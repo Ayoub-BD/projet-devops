@@ -44,3 +44,12 @@ jobs:
 
       - name: Construire l'image Docker
         run: docker build -t projet-devops .
+
+      - name: Scanner l'image avec Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: projet-devops
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
