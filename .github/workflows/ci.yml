@@ -22,8 +22,21 @@ jobs:
       - name: Lancer les tests
         run: pytest
 
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer tout l'historique
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Chercher des secrets avec Gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build:
-    needs: tests
+    needs: [tests, secrets]
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le code
