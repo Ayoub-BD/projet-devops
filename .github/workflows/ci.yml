@@ -1,8 +1,11 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [main]
+
+env:
+  IMAGE: ghcr.io/ayoub-bd/projet-devops
 
 jobs:
   tests:
@@ -38,18 +41,46 @@ jobs:
   build:
     needs: [tests, secrets]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v6
 
       - name: Construire l'image Docker
-        run: docker build -t projet-devops .
+        run: docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
 
       - name: Scanner l'image avec Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: projet-devops
+          image-ref: ${{ env.IMAGE }}:${{ github.sha }}
           format: table
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
+
+      - name: Se connecter au registre GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Envoyer l'image dans le registre
+        run: |
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Préparer la clé SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Déployer sur le serveur
+        run: ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "bash -s -- $IMAGE:${{ github.sha }}" < scripts/deploy.sh

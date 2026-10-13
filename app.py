@@ -5,4 +5,4 @@ app = Flask(__name__)
 
 @app.route("/")
 def accueil():
-    return "Bonjour depuis mon pipeline DevOps !"
+    return "Bonjour depuis mon pipeline DevOps ! Déployé automatiquement."
