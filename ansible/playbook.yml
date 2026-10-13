@@ -1,0 +1,115 @@
+- name: Préparer et durcir le serveur
+  hosts: serveurs
+  become: true   # exécuter les tâches avec sudo
+
+  tasks:
+    # ---------- Docker ----------
+    - name: Installer les prérequis
+      ansible.builtin.apt:
+        name: [ca-certificates, curl]
+        update_cache: true
+
+    - name: Télécharger la clé GPG de Docker
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Ajouter le dépôt officiel de Docker
+      ansible.builtin.deb822_repository:
+        name: docker
+        types: deb
+        uris: https://download.docker.com/linux/ubuntu
+        suites: "{{ ansible_facts['distribution_release'] }}"
+        components: stable
+        architectures: amd64
+        signed_by: /etc/apt/keyrings/docker.asc
+
+    - name: Installer Docker
+      ansible.builtin.apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
+        update_cache: true
+
+    - name: Démarrer Docker au boot
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Ajouter l'utilisateur au groupe docker
+      ansible.builtin.user:
+        name: ayoub
+        groups: docker
+        append: true
+
+    # ---------- Pare-feu ----------
+    - name: Installer UFW
+      ansible.builtin.apt:
+        name: ufw
+
+    - name: Autoriser SSH (avant d'activer le pare-feu !)
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+
+    - name: Autoriser HTTP
+      community.general.ufw:
+        rule: allow
+        port: "80"
+        proto: tcp
+
+    - name: Activer le pare-feu, tout refuser par défaut en entrée
+      community.general.ufw:
+        state: enabled
+        default: deny
+        direction: incoming
+
+    # ---------- SSH ----------
+    - name: Durcir la configuration SSH
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/01-durcissement.conf
+        content: |
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PermitRootLogin no
+        mode: "0644"
+      notify: Redémarrer SSH
+
+    - name: Vérifier que la configuration SSH est valide
+      ansible.builtin.command: /usr/sbin/sshd -t
+      changed_when: false
+
+    # ---------- fail2ban ----------
+    - name: Installer fail2ban
+      ansible.builtin.apt:
+        name: [fail2ban, python3-systemd]
+
+    - name: Configurer la protection de SSH
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.local
+        content: |
+          [sshd]
+          enabled = true
+          backend = systemd
+          maxretry = 5
+          bantime = 1h
+        mode: "0644"
+      notify: Redémarrer fail2ban
+
+    - name: Démarrer fail2ban au boot
+      ansible.builtin.service:
+        name: fail2ban
+        state: started
+        enabled: true
+
+  handlers:
+    - name: Redémarrer SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+    - name: Redémarrer fail2ban
+      ansible.builtin.service:
+        name: fail2ban
+        state: restarted
