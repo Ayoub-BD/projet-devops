@@ -182,19 +182,17 @@ Chaque push sur `main` déclenche ensuite le pipeline complet.
 
 ---
 
-## Limites connues et évolutions
-
-- State Terraform local : à migrer vers un backend distant (Azure Storage)
-- Pas de HTTPS : ajouter un reverse proxy (Caddy ou Traefik) avec Let's Encrypt
-- Serveur de développement Flask : le remplacer par Gunicorn en production
-- Conteneur exécuté en root, pas de `HEALTHCHECK` Docker
-- Pas de rollback automatique si le health check échoue après remplacement du conteneur
-- SSH ouvert à toutes les adresses : restreindre par IP source ou utiliser Azure Bastion
-- Terraform et Ansible exécutés manuellement : à intégrer à la CI (`plan` sur pull request)
-- Pas de supervision : métriques et alertes à ajouter
+## Évolutions envisagées
+ 
+Pistes pour amener la chaîne à un niveau production :
+ 
+- **Sécurité** : HTTPS via un reverse proxy (Caddy ou Traefik) et Let's Encrypt, accès SSH restreint par IP source ou via Azure Bastion, conteneur exécuté avec un utilisateur non-root
+- **Fiabilité** : Gunicorn comme serveur d'application, `HEALTHCHECK` Docker et rollback automatique vers la version précédente
+- **Industrialisation** : state Terraform sur un backend distant (Azure Storage), `terraform plan` et Ansible intégrés à la CI sur pull request
+- **Observabilité** : métriques et alertes (Prometheus et Grafana, ou Azure Monitor)
 
 ---
 
 ## Auteur
 
-Ayoub — [github.com/Ayoub-BD](https://github.com/Ayoub-BD)
+Ayoub Boudouhi — [github.com/Ayoub-BD](https://github.com/Ayoub-BD)
