@@ -14,7 +14,7 @@ L'application est volontairement minimale (une route HTTP). Le périmètre du pr
 
 ## Architecture
 
-![Architecture d'ensemble : développeur, GitHub Actions, GHCR, VM Azure, Terraform et Ansible](docs/architecture.svg)
+![Architecture d'ensemble : développeur, GitHub Actions, GHCR, VM Azure, Terraform et Ansible](architecture.svg)
 
 | Couche | Outil | Responsabilité |
 |---|---|---|
@@ -29,7 +29,7 @@ L'application est volontairement minimale (une route HTTP). Le périmètre du pr
 
 Défini dans [`.github/workflows/ci.yml`](.github/workflows/ci.yml), déclenché à chaque push sur `main`. Les jobs sont chaînés par dépendances : un échec à une étape empêche toutes les suivantes.
 
-![Pipeline CI/CD : tests et secrets en parallèle, puis build avec scan Trivy, puis déploiement](docs/pipeline.svg)
+![Pipeline CI/CD : tests et secrets en parallèle, puis build avec scan Trivy, puis déploiement](pipeline.svg)
 
 | Job | Dépend de | Actions | Bloque si |
 |---|---|---|---|
@@ -55,7 +55,7 @@ Chaque version déployée est identifiable par son commit grâce au tag SHA.
 
 Provisionnée par [`terraform/`](terraform/) (provider `azurerm ~> 4.0`).
 
-![Infrastructure Azure : IP publique, NSG, réseau virtuel, VM avec UFW et conteneur Docker](docs/azure.svg)
+![Infrastructure Azure : IP publique, NSG, réseau virtuel, VM avec UFW et conteneur Docker](azure.svg)
 
 | Ressource | Rôle |
 |---|---|
