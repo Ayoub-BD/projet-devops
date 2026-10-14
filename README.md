@@ -34,7 +34,6 @@ L'application est volontairement minimale (une route HTTP). Le périmètre du pr
 - [Stack technique](#stack-technique)
 - [Structure du dépôt](#structure-du-dépôt)
 - [Prise en main](#prise-en-main)
-- [Défis rencontrés](#défis-rencontrés)
 - [Évolutions envisagées](#évolutions-envisagées)
 - [Auteur](#auteur)
 
