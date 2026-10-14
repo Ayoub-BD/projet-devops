@@ -20,7 +20,7 @@ jobs:
           python-version: "3.14"
 
       - name: Installer les dépendances
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Lancer les tests
         run: pytest
