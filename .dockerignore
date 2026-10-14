@@ -1,4 +1,23 @@
+# Git et CI
+.git/
+.github/
+.gitignore
+.dockerignore
+
+# Environnement Python local
 .venv/
 __pycache__/
 .pytest_cache/
-.git/
+
+# Tests et dépendances de dev (non nécessaires en production)
+test_app.py
+requirements-dev.txt
+
+# Infrastructure, documentation et scripts
+terraform/
+ansible/
+scripts/
+docs/
+README.md
+Dockerfile
+*.zip
