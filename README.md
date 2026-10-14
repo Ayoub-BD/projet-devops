@@ -67,7 +67,7 @@ Défini dans [`.github/workflows/ci.yml`](.github/workflows/ci.yml), déclenché
 
 | Job | Dépend de | Actions | Bloque si |
 |---|---|---|---|
-| `tests` | | Installe les dépendances, exécute `pytest` | Un test échoue |
+| `tests` | | Installe les dépendances de test (`requirements-dev.txt`), exécute `pytest` | Un test échoue |
 | `secrets` | | Analyse **tout l'historique Git** avec Gitleaks | Un secret est détecté |
 | `build` | `tests`, `secrets` | Construit l'image, la scanne avec Trivy, la publie sur GHCR | Faille `CRITICAL` ou `HIGH` corrigeable |
 | `deploy` | `build` | Se connecte en SSH, exécute `scripts/deploy.sh` avec l'image du commit | Le site ne répond pas après déploiement |
@@ -208,7 +208,7 @@ Le playbook [`ansible/playbook.yml`](ansible/playbook.yml) est idempotent : il p
 
 | Domaine | Technologies |
 |---|---|
-| Application | Python 3.14, Flask 3, pytest |
+| Application | Python 3.14, Flask 3, Gunicorn, pytest |
 | Conteneurs | Docker, GitHub Container Registry |
 | CI/CD | GitHub Actions |
 | Infrastructure as Code | Terraform |
@@ -227,7 +227,9 @@ Le playbook [`ansible/playbook.yml`](ansible/playbook.yml) est idempotent : il p
 ├── test_app.py                 Tests pytest
 ├── Dockerfile                  Image de l'application
 ├── .dockerignore               Fichiers exclus de l'image
-├── requirements.txt            Dépendances Python
+├── .gitignore                  Fichiers exclus du dépôt (état Terraform, variables locales, venv)
+├── requirements.txt            Dépendances de production (Flask, Gunicorn)
+├── requirements-dev.txt        Dépendances de test (pytest)
 ├── .github/workflows/ci.yml    Pipeline CI/CD
 ├── terraform/                  Infrastructure Azure
 │   ├── main.tf
@@ -240,7 +242,7 @@ Le playbook [`ansible/playbook.yml`](ansible/playbook.yml) est idempotent : il p
 ├── scripts/deploy.sh           Script de déploiement exécuté sur la VM
 └── docs/
     ├── *.svg                   Schémas d'architecture
-    └── captures/               Captures d'écran
+    └── *.png                   Captures d'écran
 ```
 
 ---
@@ -251,7 +253,7 @@ Le playbook [`ansible/playbook.yml`](ansible/playbook.yml) est idempotent : il p
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 pytest
 flask run          # http://localhost:5000
 ```
@@ -296,13 +298,13 @@ Chaque push sur `main` déclenche ensuite le pipeline complet.
 ---
 
 ## Défis rencontrés
- 
+
 | Problème | Solution |
 |---|---|
 | Trivy bloquait le build : 4 failles `HIGH` dans des bibliothèques embarquées par `pip` | `pip` n'est utile qu'à la construction : il est désinstallé de l'image finale |
 | Le fichier d'état Terraform (`terraform.tfstate`), qui décrit toute l'infrastructure, avait été versionné | Retiré du dépôt et ajouté au `.gitignore`, avec les variables locales |
 | L'image lançait le serveur de développement de Flask, en `root` | Passage à Gunicorn, exécuté par un utilisateur sans privilèges |
- 
+
 ---
 
 ## Évolutions envisagées
