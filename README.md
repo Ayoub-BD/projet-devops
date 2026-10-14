@@ -1,6 +1,18 @@
-# projet-devops
+<div align="center">
+
+# Pipeline CI/CD sécurisé
+
+**Du `git push` à la production : testé, analysé, empaqueté et déployé automatiquement sur Azure.**
 
 [![CI/CD](https://github.com/Ayoub-BD/projet-devops/actions/workflows/ci.yml/badge.svg)](https://github.com/Ayoub-BD/projet-devops/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-844FBA?style=flat-square&logo=terraform&logoColor=white)
+![Ansible](https://img.shields.io/badge/Ansible-EE0000?style=flat-square&logo=ansible&logoColor=white)
+![Azure](https://img.shields.io/badge/Microsoft%20Azure-0078D4?style=flat-square)
+
+</div>
 
 Chaîne de livraison continue d'une application Flask conteneurisée, de l'infrastructure cloud jusqu'au déploiement :
 
@@ -10,11 +22,31 @@ Chaîne de livraison continue d'une application Flask conteneurisée, de l'infra
 
 L'application est volontairement minimale (une route HTTP). Le périmètre du projet est l'industrialisation qui l'entoure : chaque `push` sur `main` est testé, analysé, empaqueté puis déployé sans intervention manuelle.
 
+<details>
+<summary><b>Sommaire</b></summary>
+
+- [Architecture](#architecture)
+- [Pipeline CI/CD](#pipeline-cicd)
+- [Infrastructure Azure](#infrastructure-azure)
+- [Configuration du serveur](#configuration-du-serveur)
+- [Sécurité](#sécurité)
+- [Preuves de fonctionnement](#preuves-de-fonctionnement)
+- [Stack technique](#stack-technique)
+- [Structure du dépôt](#structure-du-dépôt)
+- [Prise en main](#prise-en-main)
+- [Défis rencontrés](#défis-rencontrés)
+- [Évolutions envisagées](#évolutions-envisagées)
+- [Auteur](#auteur)
+
+</details>
+
 ---
 
 ## Architecture
 
-![Architecture d'ensemble : développeur, GitHub Actions, GHCR, VM Azure, Terraform et Ansible](architecture.svg)
+<p align="center">
+  <img src="docs/architecture.svg" alt="Architecture d'ensemble : développeur, GitHub Actions, GHCR, VM Azure, Terraform et Ansible" width="800">
+</p>
 
 | Couche | Outil | Responsabilité |
 |---|---|---|
@@ -29,7 +61,9 @@ L'application est volontairement minimale (une route HTTP). Le périmètre du pr
 
 Défini dans [`.github/workflows/ci.yml`](.github/workflows/ci.yml), déclenché à chaque push sur `main`. Les jobs sont chaînés par dépendances : un échec à une étape empêche toutes les suivantes.
 
-![Pipeline CI/CD : tests et secrets en parallèle, puis build avec scan Trivy, puis déploiement](pipeline.svg)
+<p align="center">
+  <img src="docs/pipeline.svg" alt="Pipeline CI/CD : tests et secrets en parallèle, puis build avec scan Trivy, puis déploiement" width="800">
+</p>
 
 | Job | Dépend de | Actions | Bloque si |
 |---|---|---|---|
@@ -47,7 +81,7 @@ Le script [`scripts/deploy.sh`](scripts/deploy.sh) s'exécute sur la VM avec `se
 3. Health check : `curl` sur `localhost`, le script échoue si le site ne répond pas
 4. Nettoyage des anciennes images (`docker image prune`)
 
-Chaque version déployée est identifiable par son commit grâce au tag SHA.
+Chaque version déployée est identifiable par son commit grâce au tag SHA, ce qui permet de revenir à une version précédente.
 
 ---
 
@@ -55,7 +89,9 @@ Chaque version déployée est identifiable par son commit grâce au tag SHA.
 
 Provisionnée par [`terraform/`](terraform/) (provider `azurerm ~> 4.0`).
 
-![Infrastructure Azure : IP publique, NSG, réseau virtuel, VM avec UFW et conteneur Docker](azure.svg)
+<p align="center">
+  <img src="docs/azure.svg" alt="Infrastructure Azure : IP publique, NSG, réseau virtuel, VM avec UFW et conteneur Docker" width="800">
+</p>
 
 | Ressource | Rôle |
 |---|---|
@@ -67,6 +103,30 @@ Provisionnée par [`terraform/`](terraform/) (provider `azurerm ~> 4.0`).
 | `azurerm_linux_virtual_machine` | Serveur Ubuntu 24.04 LTS, accès par clé SSH uniquement |
 
 Région, taille de VM et abonnement sont paramétrables dans [`variables.tf`](terraform/variables.tf). L'IP publique est exposée en sortie ([`outputs.tf`](terraform/outputs.tf)).
+
+<details>
+<summary>Sortie de <code>terraform apply</code></summary>
+
+```text
+azurerm_resource_group.rg: Creation complete after 23s
+azurerm_public_ip.ip: Creation complete after 3s
+azurerm_network_security_group.nsg: Creation complete after 3s
+azurerm_virtual_network.vnet: Creation complete after 5s
+azurerm_subnet.subnet: Creation complete after 5s
+azurerm_network_interface.nic: Creation complete after 2s
+azurerm_network_interface_security_group_association.nic_nsg: Creation complete after 2s
+azurerm_linux_virtual_machine.vm: Creation complete after 49s
+
+Apply complete! Resources: 8 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+ip_publique = "x.x.x.x"
+```
+
+Terraform déduit l'ordre de création des références entre ressources : le groupe de ressources d'abord, puis le réseau, l'IP et le NSG en parallèle, et la VM en dernier.
+
+</details>
 
 ---
 
@@ -94,7 +154,53 @@ Le playbook [`ansible/playbook.yml`](ansible/playbook.yml) est idempotent : il p
 | Réseau | UFW : refus entrant par défaut | `ansible/playbook.yml` |
 | Accès | Clé SSH obligatoire, mot de passe et root désactivés | `ansible/playbook.yml` |
 | Accès | fail2ban contre le brute-force SSH | `ansible/playbook.yml` |
-| Secrets CI | Clé privée SSH, hôte et utilisateur stockés dans les GitHub Secrets | `ci.yml` |
+| Secrets CI | Clé privée SSH dédiée à la CI, hôte et utilisateur stockés dans les GitHub Secrets | `ci.yml` |
+
+---
+
+## Preuves de fonctionnement
+
+### Le pipeline bloque ce qui ne doit pas partir en production
+
+| Pipeline complet réussi | Test en échec : build et déploiement bloqués |
+|---|---|
+| <img src="docs/19-pipeline-4-jobs-vert.png" alt="Les 4 jobs du pipeline réussis" width="400"> | <img src="docs/05-pipeline-rouge.png" alt="Job tests en échec, build ignoré" width="400"> |
+
+<details>
+<summary><b>Sécurité : Trivy et Gitleaks</b></summary>
+
+<br>
+
+**Trivy** a détecté 4 failles `HIGH` dans des bibliothèques embarquées par `pip`. Retirer `pip` de l'image finale les a toutes supprimées.
+
+| Avant | Après |
+|---|---|
+| <img src="docs/07-trivy-avant.png" alt="Trivy : 4 failles HIGH" width="400"> | <img src="docs/08-trivy-apres.png" alt="Trivy : aucune faille" width="400"> |
+
+**Gitleaks**, testé avec de faux secrets : le token GitHub et la clé AWS sont détectés.
+
+<img src="docs/12-gitleaks.png" alt="Gitleaks détecte deux faux secrets" width="700">
+
+</details>
+
+<details>
+<summary><b>Infrastructure et déploiement</b></summary>
+
+<br>
+
+**Ansible idempotent** : une deuxième exécution ne modifie rien (`changed=0`).
+
+<img src="docs/17-ansible-idempotence.png" alt="PLAY RECAP Ansible avec changed=0" width="700">
+
+**Images publiées sur GHCR**, une par commit déployé, plus le tag `latest`.
+
+<img src="docs/22-ghcr-package.png" alt="Package GHCR avec les tags latest et SHA" width="700">
+
+**Application déployée automatiquement** après un simple `git push`.
+
+<img src="docs/16-deploiement-auto.png" alt="Application en ligne après déploiement automatique" width="700">
+
+</details>
 
 ---
 
@@ -120,17 +226,21 @@ Le playbook [`ansible/playbook.yml`](ansible/playbook.yml) est idempotent : il p
 ├── app.py                      Application Flask
 ├── test_app.py                 Tests pytest
 ├── Dockerfile                  Image de l'application
+├── .dockerignore               Fichiers exclus de l'image
 ├── requirements.txt            Dépendances Python
 ├── .github/workflows/ci.yml    Pipeline CI/CD
 ├── terraform/                  Infrastructure Azure
 │   ├── main.tf
 │   ├── variables.tf
-│   └── outputs.tf
+│   ├── outputs.tf
+│   └── .terraform.lock.hcl     Version figée du provider
 ├── ansible/                    Configuration et durcissement du serveur
 │   ├── playbook.yml
 │   └── inventory.ini
 ├── scripts/deploy.sh           Script de déploiement exécuté sur la VM
-└── docs/                       Schémas d'architecture (SVG)
+└── docs/
+    ├── *.svg                   Schémas d'architecture
+    └── captures/               Captures d'écran
 ```
 
 ---
@@ -168,6 +278,9 @@ cd ../ansible
 ansible-playbook -i inventory.ini playbook.yml
 ```
 
+> [!NOTE]
+> Le fichier d'état `terraform.tfstate` et les variables locales `terraform.tfvars` sont exclus du dépôt par le `.gitignore`.
+
 ### Activer le déploiement continu
 
 Ajouter ces secrets dans *Settings > Secrets and variables > Actions* :
@@ -183,16 +296,16 @@ Chaque push sur `main` déclenche ensuite le pipeline complet.
 ---
 
 ## Évolutions envisagées
- 
-Pistes pour amener la chaîne à un niveau production :
- 
-- **Sécurité** : HTTPS via un reverse proxy (Caddy ou Traefik) et Let's Encrypt, accès SSH restreint par IP source ou via Azure Bastion, conteneur exécuté avec un utilisateur non-root
-- **Fiabilité** : Gunicorn comme serveur d'application, `HEALTHCHECK` Docker et rollback automatique vers la version précédente
-- **Industrialisation** : state Terraform sur un backend distant (Azure Storage), `terraform plan` et Ansible intégrés à la CI sur pull request
-- **Observabilité** : métriques et alertes (Prometheus et Grafana, ou Azure Monitor)
+
+- **Sécuriser les échanges** : passer le site en HTTPS pour chiffrer les connexions
+- **Surveiller l'application** : être alerté automatiquement si le site tombe ou si le serveur est surchargé (Prometheus et Grafana)
+- **Revenir en arrière automatiquement** : relancer la version précédente si une mise en production échoue
+- **Limiter les accès** : n'autoriser la connexion d'administration au serveur que depuis des adresses connues
 
 ---
 
 ## Auteur
 
-Ayoub Boudouhi — [github.com/Ayoub-BD](https://github.com/Ayoub-BD)
+**Ayoub Boudouhi**, élève ingénieur en Réseaux, Systèmes & Télécoms (UPSSITECH, Toulouse)
+
+Recherche un **stage DevOps de 3 à 5 mois à partir d'avril 2027**.
