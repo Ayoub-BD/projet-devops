@@ -34,6 +34,7 @@ L'application est volontairement minimale (une route HTTP). Le périmètre du pr
 - [Stack technique](#stack-technique)
 - [Structure du dépôt](#structure-du-dépôt)
 - [Prise en main](#prise-en-main)
+- [Défis rencontrés](#défis-rencontrés)
 - [Évolutions envisagées](#évolutions-envisagées)
 - [Auteur](#auteur)
 
@@ -294,6 +295,16 @@ Chaque push sur `main` déclenche ensuite le pipeline complet.
 
 ---
 
+## Défis rencontrés
+ 
+| Problème | Solution |
+|---|---|
+| Trivy bloquait le build : 4 failles `HIGH` dans des bibliothèques embarquées par `pip` | `pip` n'est utile qu'à la construction : il est désinstallé de l'image finale |
+| Le fichier d'état Terraform (`terraform.tfstate`), qui décrit toute l'infrastructure, avait été versionné | Retiré du dépôt et ajouté au `.gitignore`, avec les variables locales |
+| L'image lançait le serveur de développement de Flask, en `root` | Passage à Gunicorn, exécuté par un utilisateur sans privilèges |
+ 
+---
+
 ## Évolutions envisagées
 
 - **Sécuriser les échanges** : passer le site en HTTPS pour chiffrer les connexions
@@ -306,5 +317,3 @@ Chaque push sur `main` déclenche ensuite le pipeline complet.
 ## Auteur
 
 **Ayoub Boudouhi**, élève ingénieur en Réseaux, Systèmes & Télécoms (UPSSITECH, Toulouse)
-
-Recherche un **stage DevOps de 3 à 5 mois à partir d'avril 2027**.
